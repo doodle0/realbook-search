@@ -30,3 +30,6 @@ target
 
 # vscode settings
 /.vscode
+
+# Claude Code session data
+/.claude
