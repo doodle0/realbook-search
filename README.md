@@ -39,12 +39,12 @@ This is a complete rewrite of the [original realbook project](https://github.com
 ## Tech Stack
 
 ### Backend (api/)
-- **Language:** Rust (Edition 2021)
+- **Language:** Rust (Edition 2024)
 - **Framework:** Rocket 0.5.1
 - **Purpose:** RESTful API for search operations and data serving
 
 ### Frontend (ui/)
-- **Language:** Rust (Edition 2021)
+- **Language:** Rust (Edition 2024)
 - **Framework:** Yew 0.22.0 (WebAssembly)
 - **HTTP Client:** reqwest 0.12.25
 - **Build Tool:** Trunk
@@ -142,7 +142,7 @@ This is a complete rewrite of the [original realbook project](https://github.com
 ## Getting Started
 
 ### Prerequisites
-- Rust 1.81+ (stable toolchain, Edition 2021)
+- Rust 1.85.0+ (stable toolchain, Edition 2024)
 - Trunk (for frontend builds): `cargo install trunk`
 - wasm-bindgen-cli (for WASM): `cargo install wasm-bindgen-cli`
 

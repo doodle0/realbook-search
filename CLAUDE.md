@@ -4,360 +4,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Real Book search service that helps jazz musicians find songs by title, volume, and page number. It's a complete rewrite of the original JavaScript-based [realbook project](https://github.com/doodle0/realbook) using Rust and WebAssembly for improved performance and type safety.
+Real Book Search is a full-stack Rust application that helps jazz musicians find songs by title, volume, and page number. It's a complete rewrite of the original JavaScript-based [realbook project](https://github.com/doodle0/realbook) using Rust and WebAssembly.
 
-**Current Status:** Early development (v0.1.0) - basic infrastructure is in place but core search functionality is not yet implemented.
+**Current Status:** Phase 1 Complete (v0.2.0) - Core search functionality working with 1,161 Real Book entries
 
-## Architecture
+## Quick Start
 
-This is a Cargo workspace monorepo with two separate applications:
-
-### Backend (api/)
-- **Framework:** Rocket 0.5.1 web framework
-- **Entry Point:** `api/src/main.rs` - mounts all routes under `/api` prefix
-- **Routes:** Defined in `api/src/controller.rs` using Rocket's attribute macros (`#[get("/")]`, etc.)
-- **Static Assets:** Served from `api/resources/` directory
-- **Default Port:** 8000 (Rocket default)
-
-### Frontend (ui/)
-- **Framework:** Yew 0.22.0 (React-like framework for Rust/WebAssembly)
-- **Rendering:** Client-side rendering (CSR) only
-- **HTTP Client:** reqwest 0.12.25 for API communication
-- **Build Tool:** Trunk (WebAssembly bundler with hot-reload)
-- **API Integration:** Configured to connect to backend at `http://localhost:8080/api` (via Trunk proxy)
-- **Default Port:** 8080 (Trunk dev server)
-
-### Key Architectural Decisions
-
-1. **Unified Language:** Both frontend and backend use Rust, enabling type sharing and consistent tooling
-2. **WebAssembly Frontend:** Yew compiles to WASM for near-native performance in the browser
-3. **Separate Processes:** Backend and frontend run as independent services during development
-4. **Trunk Proxy:** The Trunk dev server at port 8080 proxies `/api` requests to the Rocket backend at port 8000
-
-## Development Commands
-
-### Prerequisites
-```bash
-# Install Trunk for WebAssembly builds
-cargo install trunk
-
-# Install wasm-bindgen-cli
-cargo install wasm-bindgen-cli
-```
-
-### Running the Application
-
-**Start both services in separate terminals:**
-
-Terminal 1 - Backend:
-```bash
-cd api
-cargo run
-# Runs on http://localhost:8000
-```
-
-Terminal 2 - Frontend:
-```bash
-cd ui
-trunk serve
-# Runs on http://localhost:8080
-# Visit this URL in your browser
-```
-
-### Building
-
-```bash
-# Build entire workspace
-cargo build
-
-# Build backend only
-cargo build -p api
-
-# Build frontend only (for production)
-cd ui
-trunk build --release
-# Output: ui/dist/
-```
-
-### Checking Code
-
-```bash
-# Check all workspace members
-cargo check
-
-# Check specific package
-cargo check -p api
-cargo check -p ui
-```
-
-### Rust Edition
-
-This project uses **Rust Edition 2024**, which requires Rust 1.85.0 or later (released February 2025):
-```bash
-rustup update stable
-```
-
-## Code Patterns
-
-### Adding Backend Routes
-
-1. Add route handler function in `api/src/controller.rs`:
-```rust
-#[get("/your-route")]
-pub fn your_handler() -> &'static str {
-    "response"
-}
-```
-
-2. Register route in `api/src/main.rs`:
-```rust
-rocket::build().mount("/api", routes![index, rickroll, your_handler])
-```
-
-### Creating Yew Components
-
-**Function Components (Recommended):**
-
-Use the `yewfc` VSCode snippet or manually:
-```rust
-#[derive(PartialEq, Properties)]
-pub struct MyComponentProps {
-    // props here
-}
-
-#[component]
-pub fn MyComponent(props: &MyComponentProps) -> Html {
-    html! {
-        <div>{"content"}</div>
-    }
-}
-```
-
-**Struct Components (For Complex State):**
-
-Use the `yewsc` VSCode snippet or manually:
-```rust
-pub struct MyComponent;
-
-pub enum MyComponentMsg {
-    // messages here
-}
-
-impl Component for MyComponent {
-    type Message = MyComponentMsg;
-    type Properties = ();
-
-    fn create(ctx: &Context<Self>) -> Self {
-        Self
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        html! { /* ... */ }
-    }
-}
-```
-
-### Frontend State Management
-
-- Use `use_state` hook for simple component state
-- Use `use_reducer` for complex state logic
-- API calls should use `reqwest` via `use_effect` or event handlers
-
-### API Communication
-
-Frontend makes requests to `API_BASE_URL` constant defined in `ui/src/main.rs`. During development, this points to `http://localhost:8080/api` which Trunk proxies to the backend.
-
-## Important Implementation Notes
-
-### Static File Paths
-When serving static files from the backend, paths must be relative to workspace root:
-```rust
-// Correct - relative to workspace root
-NamedFile::open(Path::new("api/resources/file.gif")).await
-```
-
-### Frontend Build Artifacts
-The `ui/dist/` directory contains compiled WASM and is gitignored. Never commit these files.
-
-### Workspace Structure
-When adding dependencies, be mindful of whether they belong in:
-- `api/Cargo.toml` - Backend-only dependencies
-- `ui/Cargo.toml` - Frontend-only dependencies
-- Root `Cargo.toml` - Shared workspace configuration (rare)
-
-## Current Implementation Status
-
-### ✅ Completed (Backend - Phase 1)
-
-**Data Layer:**
-- Downloaded and integrated `realbook.json` from original project (1,161 entries)
-- Created `RealBookEntry` model with fields: title, volume, page_s, page_e
-- Implemented custom deserializer for title field (handles both strings and numbers)
-- Data stored in `api/resources/realbook.json`
-
-**API Endpoints (all in `api/src/controller.rs`):**
-- `GET /api/search?query=<text>&volume=<num>&page=<num>` - Search with optional filters
-- `GET /api/volumes` - List all volumes with entry counts
-- `GET /api/random` - Get random Real Book entry
-- All endpoints return JSON using Rocket's `Json<T>` wrapper
-
-**Architecture Notes:**
-- Data loaded once at startup in `load_realbook_data()` function
-- Stored in Rocket state as `Arc<Vec<RealBookEntry>>` for thread-safe sharing
-- Search uses simple case-insensitive string matching (`.to_lowercase().contains()`)
-- Image URLs follow pattern: `https://wypn9z41ir5bzmgjjalyna.on.drv.tw/realbook/rendered/{volume*1000+page}.jpeg`
-
-**Build Environment:**
-- Rust 1.81+ required (Edition 2021, not 2024 due to older cargo versions)
-- Must set RUSTC and PATH environment variables when running cargo:
-  ```bash
-  RUSTC="/root/.cargo/bin/rustc" PATH="/usr/bin:/bin:/usr/local/bin:/root/.cargo/bin" cargo run
-  ```
-- Linker requires `/usr/bin` in PATH to find `cc`
-
-### ✅ Completed (Frontend - Phase 1)
-
-**UI Components (all in `ui/src/main.rs`):**
-- Search input with text query and volume filter
-- Results list displaying song titles, volume, and page numbers
-- Image viewer showing Real Book sheet images from external CDN
-- Random song button for discovery
-- Loading states and error handling
-
-**API Integration (`ui/src/api.rs`):**
-- `search(query, volume, page)` - Full-text search with filters
-- `get_random()` - Random song selection
-- `get_volumes()` - Volume listing (implemented but not yet used in UI)
-- Error handling with custom `ApiError` type
-
-**Current Layout:**
-- Split-screen design: search results on left, sheet viewer on right
-- Works well on large screens
-- Basic inline CSS styling (will be replaced with Pico CSS)
-
-**Build & Run:**
 ```bash
 # Terminal 1 - Backend
 cargo run -p api
-# Runs on http://localhost:8000
 
 # Terminal 2 - Frontend
 cd ui && trunk serve
-# Runs on http://localhost:8080 (proxies /api to backend)
+# Visit http://localhost:8080
 ```
 
-### 🚧 Next Steps (Frontend - Phase 2: Polish & Refactoring)
+## Documentation Index
 
-**Architecture Improvements:**
-1. **Component Refactoring:** Break monolithic `App` component into smaller, reusable components
-   - `SearchInput` component (search bar, volume selector, random button)
-   - `ResultsList` component (search results display)
-   - `SheetViewer` component (image display)
-   - `Header` component (app title, navigation)
-   - Proper props and callbacks between components
+### For Implementation Work
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, data flow, component structure, tech stack
+- **[PATTERNS.md](docs/PATTERNS.md)** - Code conventions for backend routes, frontend components, API calls
+- **[DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Setup, building, running, troubleshooting, project structure
 
-2. **Styling Migration:** Replace inline CSS with Pico CSS framework
-   - Minimal custom CSS, leverage Pico's semantic HTML styling
-   - Maintain current split-screen layout for desktop
-   - Add responsive mobile-first design (most users are mobile)
+### For Process & Planning
+- **[WORKFLOWS.md](docs/WORKFLOWS.md)** - Git workflow, milestone reviews, release process, CI/CD
+- **[AUDIT.md](docs/AUDIT.md)** - Documentation audit checklist and process
+- **[AWS_MIGRATION_PLAN.md](docs/AWS_MIGRATION_PLAN.md)** - Image hosting migration from Google Drive to AWS
 
-3. **Responsive Design:**
-   - Mobile: Stack layout (search → results → viewer vertically)
-   - Tablet/Desktop: Keep current side-by-side layout
-   - Use CSS Grid or Flexbox with media queries
+## Tech Stack
 
-**Frontend Implementation Note:**
-- Yew confidence level: 7/10 (solid fundamentals, may need iteration on version-specific APIs)
-- Expect ~80% correctness on first pass, with compiler-guided refinements
-- Strong on: component structure, state management, html! macro, event handling
-- May require iteration on: Yew 0.22-specific APIs, complex async patterns, WASM-specific quirks
-- Approach: Start simple, build incrementally, let compiler guide corrections
+- **Backend:** Rocket 0.5.1 (Rust web framework)
+- **Frontend:** Yew 0.22.0 (WebAssembly framework)
+- **Build Tool:** Trunk (WebAssembly bundler)
+- **Data:** 1,161 Real Book entries in `api/resources/realbook.json`
+- **Images:** External CDN (Google Drive, migration to AWS planned)
+- **Rust Edition:** 2024 (requires Rust 1.85.0+)
 
-## Milestone Review Automation
+## Project Structure
 
-**IMPORTANT:** At each major milestone completion, generate a PM-style review and post it to GitHub Issues automatically.
-
-### Process
-
-1. **Generate Review:** Create a comprehensive product management review covering:
-   - What was delivered (features, technical infrastructure)
-   - Strengths and weaknesses
-   - Gaps and concerns (critical, important, nice-to-have)
-   - Risk assessment
-   - Competitive analysis
-   - Roadmap review and prioritization
-   - User stories assessment
-   - Metrics recommendations
-   - Final verdict and next steps
-
-2. **Save Review:** Save markdown file to `reviews/[milestone-name].md`
-   - Example: `reviews/phase-1-completion.md`
-   - Include date, status, and detailed analysis
-
-3. **Create GitHub Issue:** Use automation script
-   ```bash
-   ./scripts/milestone-review.sh "Milestone Name" reviews/file.md
-   ```
-
-4. **Commit Review:** Add review file to git for documentation
-   ```bash
-   git add reviews/[milestone-name].md
-   git commit -m "Add [milestone] completion review"
-   ```
-
-### Script Details
-
-**Location:** `scripts/milestone-review.sh`
-
-**What it does:**
-- Creates GitHub issue with review content
-- Adds labels: `milestone`, `review`, `pm-review`
-- Assigns to repository owner
-- Provides link to created issue
-
-**Requirements:**
-- GitHub CLI (`gh`) installed and authenticated
-- Repository access configured
-
-### Review Template Structure
-
-```markdown
-# Product Manager Review - [Milestone Name]
-
-**Status:** ✅/🚧/📋
-**Date:** YYYY-MM-DD
-
-## Executive Summary
-## What Was Delivered
-## Strengths
-## Gaps & Concerns
-## Risk Assessment
-## Roadmap Review
-## Final Verdict
-## Next Steps
+```
+realbook-search/
+├── api/           # Backend Rocket API (port 8000)
+├── ui/            # Frontend Yew WebAssembly (port 8080)
+├── docs/          # Documentation (see index above)
+├── reviews/       # Milestone reviews
+├── scripts/       # Automation scripts
+├── Cargo.toml     # Workspace configuration
+└── CLAUDE.md      # This file (navigation hub)
 ```
 
-### Example Usage
+## Key Implementation Notes
 
-Phase 1 completion (already done):
-```bash
-./scripts/milestone-review.sh "Phase 1 - Core Search Functionality" reviews/phase-1-completion.md
-# Created: https://github.com/doodle0/realbook-search/issues/1
-```
+### Backend API Endpoints
+- `GET /api/search?query=<text>&volume=<num>&page=<num>` - Search with filters
+- `GET /api/volumes` - List all volumes
+- `GET /api/random` - Get random entry
 
-Future milestones:
-```bash
-# After completing Phase 2
-./scripts/milestone-review.sh "Phase 2 - UI Refactoring" reviews/phase-2-completion.md
-```
+### Frontend Components
+- Main app in `ui/src/main.rs`
+- API client in `ui/src/api.rs`
+- Models in `ui/src/models.rs`
 
-**View all milestone reviews:**
-```bash
-gh issue list --label milestone
-```
+### Development Workflow
+See [WORKFLOWS.md](docs/WORKFLOWS.md) for full process, but key points:
+- Run documentation audit before milestone completions: `./scripts/audit-docs.sh`
+- Create milestone reviews: `./scripts/milestone-review.sh "Phase N" reviews/file.md`
+- Follow existing commit message style (verb-first, concise)
 
-## VSCode Snippets
+## Current Phase
 
-Two custom snippets are available in `.vscode/snippets.code-snippets`:
-- `yewfc` - Generate a Yew function component
-- `yewsc` - Generate a Yew struct component with message enum
+**Phase 1:** ✅ Complete - Core search functionality
+**Phase 2:** 🚧 Next - Mobile responsive design, Pico CSS, loading states
+
+See [Phase 1 Review](reviews/phase-1-completion.md) for detailed assessment and next steps.
+
+---
+
+_For detailed information on any topic, see the documentation index above._
