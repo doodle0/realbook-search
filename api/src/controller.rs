@@ -8,5 +8,6 @@ pub fn index() -> &'static str {
 
 #[get("/rickroll")]
 pub async fn rickroll() -> Option<NamedFile> {
+    println!("{:?}", Path::new("resources/rickroll.gif").canonicalize());
     NamedFile::open(Path::new("api/resources/rickroll.gif")).await.ok()
 }
