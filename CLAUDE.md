@@ -273,6 +273,89 @@ cd ui && trunk serve
 - May require iteration on: Yew 0.22-specific APIs, complex async patterns, WASM-specific quirks
 - Approach: Start simple, build incrementally, let compiler guide corrections
 
+## Milestone Review Automation
+
+**IMPORTANT:** At each major milestone completion, generate a PM-style review and post it to GitHub Issues automatically.
+
+### Process
+
+1. **Generate Review:** Create a comprehensive product management review covering:
+   - What was delivered (features, technical infrastructure)
+   - Strengths and weaknesses
+   - Gaps and concerns (critical, important, nice-to-have)
+   - Risk assessment
+   - Competitive analysis
+   - Roadmap review and prioritization
+   - User stories assessment
+   - Metrics recommendations
+   - Final verdict and next steps
+
+2. **Save Review:** Save markdown file to `reviews/[milestone-name].md`
+   - Example: `reviews/phase-1-completion.md`
+   - Include date, status, and detailed analysis
+
+3. **Create GitHub Issue:** Use automation script
+   ```bash
+   ./scripts/milestone-review.sh "Milestone Name" reviews/file.md
+   ```
+
+4. **Commit Review:** Add review file to git for documentation
+   ```bash
+   git add reviews/[milestone-name].md
+   git commit -m "Add [milestone] completion review"
+   ```
+
+### Script Details
+
+**Location:** `scripts/milestone-review.sh`
+
+**What it does:**
+- Creates GitHub issue with review content
+- Adds labels: `milestone`, `review`, `pm-review`
+- Assigns to repository owner
+- Provides link to created issue
+
+**Requirements:**
+- GitHub CLI (`gh`) installed and authenticated
+- Repository access configured
+
+### Review Template Structure
+
+```markdown
+# Product Manager Review - [Milestone Name]
+
+**Status:** ✅/🚧/📋
+**Date:** YYYY-MM-DD
+
+## Executive Summary
+## What Was Delivered
+## Strengths
+## Gaps & Concerns
+## Risk Assessment
+## Roadmap Review
+## Final Verdict
+## Next Steps
+```
+
+### Example Usage
+
+Phase 1 completion (already done):
+```bash
+./scripts/milestone-review.sh "Phase 1 - Core Search Functionality" reviews/phase-1-completion.md
+# Created: https://github.com/doodle0/realbook-search/issues/1
+```
+
+Future milestones:
+```bash
+# After completing Phase 2
+./scripts/milestone-review.sh "Phase 2 - UI Refactoring" reviews/phase-2-completion.md
+```
+
+**View all milestone reviews:**
+```bash
+gh issue list --label milestone
+```
+
 ## VSCode Snippets
 
 Two custom snippets are available in `.vscode/snippets.code-snippets`:
