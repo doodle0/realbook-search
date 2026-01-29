@@ -2,3 +2,6 @@
 address = "0.0.0.0"
 # The port to serve on.
 port = 8080
+
+[[proxy]]
+backend = "http://localhost:8000/api"

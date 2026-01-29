@@ -185,17 +185,93 @@ When adding dependencies, be mindful of whether they belong in:
 - `ui/Cargo.toml` - Frontend-only dependencies
 - Root `Cargo.toml` - Shared workspace configuration (rare)
 
-## Future Development Direction
+## Current Implementation Status
 
-The next major tasks according to the roadmap (see README.md):
+### ✅ Completed (Backend - Phase 1)
 
-1. **Data Structure:** Design JSON schema for Real Book entries (title, composer, volume, page, key signature, etc.)
-2. **Data Import:** Port or recreate the `realbook.json` from the original project
-3. **Search API:** Implement `/api/search` endpoint with filtering (by title, volume, page)
-4. **Search UI:** Build search input and results display components
-5. **Integration:** Connect frontend search interface to backend API
+**Data Layer:**
+- Downloaded and integrated `realbook.json` from original project (1,161 entries)
+- Created `RealBookEntry` model with fields: title, volume, page_s, page_e
+- Implemented custom deserializer for title field (handles both strings and numbers)
+- Data stored in `api/resources/realbook.json`
 
-The original project reference (realbook.kro.kr) uses a simple JSON file with client-side search. This rewrite aims to provide a more scalable backend-based search with potential for database integration later.
+**API Endpoints (all in `api/src/controller.rs`):**
+- `GET /api/search?query=<text>&volume=<num>&page=<num>` - Search with optional filters
+- `GET /api/volumes` - List all volumes with entry counts
+- `GET /api/random` - Get random Real Book entry
+- All endpoints return JSON using Rocket's `Json<T>` wrapper
+
+**Architecture Notes:**
+- Data loaded once at startup in `load_realbook_data()` function
+- Stored in Rocket state as `Arc<Vec<RealBookEntry>>` for thread-safe sharing
+- Search uses simple case-insensitive string matching (`.to_lowercase().contains()`)
+- Image URLs follow pattern: `https://wypn9z41ir5bzmgjjalyna.on.drv.tw/realbook/rendered/{volume*1000+page}.jpeg`
+
+**Build Environment:**
+- Rust 1.81+ required (Edition 2021, not 2024 due to older cargo versions)
+- Must set RUSTC and PATH environment variables when running cargo:
+  ```bash
+  RUSTC="/root/.cargo/bin/rustc" PATH="/usr/bin:/bin:/usr/local/bin:/root/.cargo/bin" cargo run
+  ```
+- Linker requires `/usr/bin` in PATH to find `cc`
+
+### ✅ Completed (Frontend - Phase 1)
+
+**UI Components (all in `ui/src/main.rs`):**
+- Search input with text query and volume filter
+- Results list displaying song titles, volume, and page numbers
+- Image viewer showing Real Book sheet images from external CDN
+- Random song button for discovery
+- Loading states and error handling
+
+**API Integration (`ui/src/api.rs`):**
+- `search(query, volume, page)` - Full-text search with filters
+- `get_random()` - Random song selection
+- `get_volumes()` - Volume listing (implemented but not yet used in UI)
+- Error handling with custom `ApiError` type
+
+**Current Layout:**
+- Split-screen design: search results on left, sheet viewer on right
+- Works well on large screens
+- Basic inline CSS styling (will be replaced with Pico CSS)
+
+**Build & Run:**
+```bash
+# Terminal 1 - Backend
+cargo run -p api
+# Runs on http://localhost:8000
+
+# Terminal 2 - Frontend
+cd ui && trunk serve
+# Runs on http://localhost:8080 (proxies /api to backend)
+```
+
+### 🚧 Next Steps (Frontend - Phase 2: Polish & Refactoring)
+
+**Architecture Improvements:**
+1. **Component Refactoring:** Break monolithic `App` component into smaller, reusable components
+   - `SearchInput` component (search bar, volume selector, random button)
+   - `ResultsList` component (search results display)
+   - `SheetViewer` component (image display)
+   - `Header` component (app title, navigation)
+   - Proper props and callbacks between components
+
+2. **Styling Migration:** Replace inline CSS with Pico CSS framework
+   - Minimal custom CSS, leverage Pico's semantic HTML styling
+   - Maintain current split-screen layout for desktop
+   - Add responsive mobile-first design (most users are mobile)
+
+3. **Responsive Design:**
+   - Mobile: Stack layout (search → results → viewer vertically)
+   - Tablet/Desktop: Keep current side-by-side layout
+   - Use CSS Grid or Flexbox with media queries
+
+**Frontend Implementation Note:**
+- Yew confidence level: 7/10 (solid fundamentals, may need iteration on version-specific APIs)
+- Expect ~80% correctness on first pass, with compiler-guided refinements
+- Strong on: component structure, state management, html! macro, event handling
+- May require iteration on: Yew 0.22-specific APIs, complex async patterns, WASM-specific quirks
+- Approach: Start simple, build incrementally, let compiler guide corrections
 
 ## VSCode Snippets
 

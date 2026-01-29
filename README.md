@@ -12,30 +12,39 @@ The Real Book is a collection of jazz standards that is widely used by jazz musi
 
 This is a complete rewrite of the [original realbook project](https://github.com/doodle0/realbook) ([realbook.kro.kr](https://realbook.kro.kr)) using modern Rust-based technologies for improved performance, maintainability, and scalability.
 
-**What's Implemented:**
-- ✅ Basic Rust monorepo structure (Cargo workspace)
-- ✅ Rocket-based backend API with static file serving
-- ✅ Yew-based WebAssembly frontend with hot-reload development
-- ✅ Frontend-backend integration (HTTP client setup)
+**What's Implemented (Phase 1 Complete ✅):**
+- ✅ Rust monorepo structure (Cargo workspace with api/ and ui/)
+- ✅ Rocket-based backend API
+  - Search by title (case-insensitive, partial match)
+  - Filter by volume (1, 2, 3) and page number
+  - Random song selection endpoint
+  - Volume listing endpoint
+  - Data: 1,161 Real Book entries across 3 volumes
+- ✅ Yew-based WebAssembly frontend
+  - Search input with text query and volume filter
+  - Results list (clickable song entries)
+  - Sheet music image viewer (split-screen layout)
+  - Random song button
+  - Basic loading states and error handling
+- ✅ Frontend-backend integration via Trunk proxy
 
-**What's Coming Next:**
-- 🚧 Real Book data integration (JSON data structure)
-- 🚧 Search API endpoints (title, volume, page search)
-- 🚧 Search UI components
-- 🚧 Filtering and sorting capabilities
-- 🚧 Responsive design
+**What's Coming Next (Phase 2 - UI Refactoring):**
+- 🚧 **Component architecture:** Break App into reusable Yew components
+- 🚧 **Pico CSS integration:** Replace inline CSS with Pico framework
+- 🚧 **Mobile-responsive design:** Stack layout for mobile users
+- 📋 Sorting options, i18n (Korean), advanced features
+- 📋 Performance optimizations (fuzzy search, caching)
 - 📋 Database integration (optional, for future scalability)
-- 📋 Advanced features (random song selection, favorites, etc.)
 
 ## Tech Stack
 
 ### Backend (api/)
-- **Language:** Rust (Edition 2024)
+- **Language:** Rust (Edition 2021)
 - **Framework:** Rocket 0.5.1
 - **Purpose:** RESTful API for search operations and data serving
 
 ### Frontend (ui/)
-- **Language:** Rust (Edition 2024)
+- **Language:** Rust (Edition 2021)
 - **Framework:** Yew 0.22.0 (WebAssembly)
 - **HTTP Client:** reqwest 0.12.25
 - **Build Tool:** Trunk
@@ -73,24 +82,39 @@ This is a complete rewrite of the [original realbook project](https://github.com
 
 ## Development Roadmap
 
-### Phase 1: Core Search Functionality (Current)
-- [ ] Design Real Book data structure (JSON schema)
-- [ ] Port data from original project or create new dataset
-- [ ] Implement backend search API
-  - [ ] Search by title (case-insensitive, partial match)
-  - [ ] Filter by volume
-  - [ ] Filter by page number
-- [ ] Build frontend search interface
-  - [ ] Search input component
-  - [ ] Results list component
-  - [ ] Volume/page display
+### Phase 1: Core Search Functionality ✅ COMPLETE
+- [x] Design Real Book data structure (JSON schema)
+- [x] Port data from original project or create new dataset
+- [x] Implement backend search API
+  - [x] Search by title (case-insensitive, partial match)
+  - [x] Filter by volume
+  - [x] Filter by page number
+- [x] Build frontend search interface
+  - [x] Search input component
+  - [x] Results list component
+  - [x] Volume/page display with sheet images
+- [x] Add random song selection feature
+- [x] Basic loading states and error handling
 
-### Phase 2: Enhanced Features
-- [ ] Add random song selection feature
+### Phase 2: UI Refactoring & Polish (Current)
+- [ ] **Component Architecture:** Break monolithic App into smaller Yew components
+  - [ ] SearchInput component (search bar, filters, random button)
+  - [ ] ResultsList component (song results display)
+  - [ ] SheetViewer component (image viewer)
+  - [ ] Header component (app title, navigation)
+- [ ] **Styling Migration:** Replace inline CSS with Pico CSS framework
+  - [ ] Minimal custom CSS approach
+  - [ ] Semantic HTML with Pico's built-in styles
+- [ ] **Responsive Design:** Mobile-first approach (most users are mobile)
+  - [ ] Mobile: Stack layout (search → results → viewer)
+  - [ ] Desktop: Keep current split-screen layout
+  - [ ] Tablet: Adaptive intermediate layout
+
+### Phase 3: Enhanced Features
 - [ ] Implement sorting options (alphabetical, by volume, by page)
 - [ ] Add Korean language support (multilingual UI)
-- [ ] Responsive mobile design
-- [ ] Loading states and error handling
+- [ ] Improved loading states with skeletons
+- [ ] Better error messages and empty states
 
 ### Phase 3: Performance & Polish
 - [ ] Optimize search algorithm (fuzzy matching, relevance scoring)
@@ -99,7 +123,15 @@ This is a complete rewrite of the [original realbook project](https://github.com
 - [ ] Add keyboard shortcuts for power users
 - [ ] Performance benchmarking vs. original JS version
 
-### Phase 4: Deployment & Scaling (Future)
+### Phase 4: Advanced Features
+- [ ] Fuzzy search with relevance scoring
+- [ ] User favorites and bookmarks
+- [ ] Recent searches history
+- [ ] Keyboard shortcuts for power users
+- [ ] Search result caching
+- [ ] Frontend state persistence (localStorage)
+
+### Phase 5: Deployment & Scaling (Future)
 - [ ] Docker containerization
 - [ ] CI/CD pipeline
 - [ ] Production deployment setup
@@ -110,7 +142,7 @@ This is a complete rewrite of the [original realbook project](https://github.com
 ## Getting Started
 
 ### Prerequisites
-- Rust (nightly toolchain, Edition 2024)
+- Rust 1.81+ (stable toolchain, Edition 2021)
 - Trunk (for frontend builds): `cargo install trunk`
 - wasm-bindgen-cli (for WASM): `cargo install wasm-bindgen-cli`
 
