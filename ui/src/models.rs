@@ -43,9 +43,3 @@ pub struct SearchResponse {
     pub total: usize,
 }
 
-/// Volume information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct VolumeInfo {
-    pub volume: u32,
-    pub count: usize,
-}

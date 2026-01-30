@@ -1,4 +1,4 @@
-use crate::models::{RealBookEntry, SearchResponse, VolumeInfo};
+use crate::models::{RealBookEntry, SearchResponse};
 
 /// Base URL for the API
 /// During development with Trunk, this will be proxied through localhost:8080
@@ -77,17 +77,3 @@ pub async fn get_random() -> Result<RealBookEntry, ApiError> {
     Ok(data)
 }
 
-/// Get list of volumes with entry counts
-pub async fn get_volumes() -> Result<Vec<VolumeInfo>, ApiError> {
-    let url = format!("{}/volumes", API_BASE_URL);
-    let response = reqwest::get(&url).await?;
-
-    if !response.status().is_success() {
-        return Err(ApiError {
-            message: format!("API returned status: {}", response.status()),
-        });
-    }
-
-    let data = response.json::<Vec<VolumeInfo>>().await?;
-    Ok(data)
-}

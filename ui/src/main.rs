@@ -1,68 +1,94 @@
+// Import modules
 mod api;
 mod models;
+mod components;
+mod utils;
 
+// Import types we need
 use models::{RealBookEntry, SearchResponse};
 use yew::prelude::*;
 use wasm_bindgen_futures::spawn_local;
+use wasm_bindgen::JsCast;
+use gloo_events::EventListener;
 
-#[component]
-fn App() -> Html {
+// Import all our components
+use components::{Header, SearchInput, ResultsList, SheetViewer};
+
+/// Main App component
+///
+/// This is the root component that manages all application state using Yew's
+/// hook-based state management. It orchestrates child components and handles
+/// all API interactions and keyboard navigation.
+///
+/// State managed by this component:
+/// - search_query: Current search text
+/// - selected_volume: Volume filter (or None for "All")
+/// - search_results: Results from the last search
+/// - selected_entry: Entry selected for viewing sheet music
+/// - search_loading: Whether a search API call is in progress
+/// - random_loading: Whether a random entry API call is in progress
+/// - error: Error message displayed in SearchInput
+/// - selected_index: Index of keyboard-selected result
+#[function_component(App)]
+fn app() -> Html {
+    // Initialize state using the use_state hook
+    // use_state returns a handle that acts like both a value and a setter
     let search_query = use_state(|| String::new());
     let selected_volume = use_state(|| Option::<u32>::None);
     let search_results = use_state(|| Option::<SearchResponse>::None);
     let selected_entry = use_state(|| Option::<RealBookEntry>::None);
-    let loading = use_state(|| false);
+    let search_loading = use_state(|| false);
+    let random_loading = use_state(|| false);
     let error = use_state(|| Option::<String>::None);
+    // Track which result is currently selected via keyboard navigation
+    let selected_index = use_state(|| Option::<usize>::None);
 
-    // Handle search
-    let on_search = {
+    // Callback: Handle when user types in the search box
+    // This triggers live search and clears the sheet viewer
+    let on_query_change = {
         let search_query = search_query.clone();
-        let selected_volume = selected_volume.clone();
-        let search_results = search_results.clone();
-        let loading = loading.clone();
-        let error = error.clone();
-
-        Callback::from(move |_| {
-            let query = (*search_query).clone();
-            let volume = *selected_volume;
-            let results = search_results.clone();
-            let loading = loading.clone();
-            let error = error.clone();
-
-            loading.set(true);
-            error.set(None);
-
-            spawn_local(async move {
-                match api::search(Some(query), volume, None).await {
-                    Ok(response) => {
-                        results.set(Some(response));
-                        error.set(None);
-                    }
-                    Err(e) => {
-                        error.set(Some(e.message));
-                    }
-                }
-                loading.set(false);
-            });
+        let selected_entry = selected_entry.clone();
+        Callback::from(move |new_query: String| {
+            search_query.set(new_query);
+            // Clear sheet viewer when typing - user must press Enter to view
+            selected_entry.set(None);
         })
     };
 
-    // Handle random
+    // Callback: Handle when user changes the volume dropdown
+    let on_volume_change = {
+        let selected_volume = selected_volume.clone();
+        Callback::from(move |new_volume: Option<u32>| {
+            selected_volume.set(new_volume);
+        })
+    };
+
+    // Callback: Handle when user clicks the Random button
     let on_random = {
         let selected_entry = selected_entry.clone();
-        let loading = loading.clone();
+        let random_loading = random_loading.clone();
         let error = error.clone();
 
-        Callback::from(move |_| {
+        Callback::from(move |_: ()| {
             let entry = selected_entry.clone();
-            let loading = loading.clone();
+            let loading = random_loading.clone();
             let error = error.clone();
 
+            // Show loading spinner before clearing entry to avoid placeholder flash
             loading.set(true);
+            entry.set(None);
             error.set(None);
 
             spawn_local(async move {
-                match api::get_random().await {
+                // Ensure spinner shows for at least 300ms for better UX
+                let min_duration = gloo_timers::future::TimeoutFuture::new(300);
+
+                let result = api::get_random().await;
+
+                // Wait for minimum duration
+                min_duration.await;
+
+                match result {
                     Ok(random_entry) => {
                         entry.set(Some(random_entry));
                         error.set(None);
@@ -76,28 +102,7 @@ fn App() -> Html {
         })
     };
 
-    // Input handlers
-    let on_query_input = {
-        let search_query = search_query.clone();
-        Callback::from(move |e: InputEvent| {
-            let input: web_sys::HtmlInputElement = e.target_unchecked_into();
-            search_query.set(input.value());
-        })
-    };
-
-    let on_volume_change = {
-        let selected_volume = selected_volume.clone();
-        Callback::from(move |e: Event| {
-            let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
-            let value = select.value();
-            if value.is_empty() {
-                selected_volume.set(None);
-            } else {
-                selected_volume.set(value.parse().ok());
-            }
-        })
-    };
-
+    // Callback: Handle when user clicks on a search result
     let on_entry_click = {
         let selected_entry = selected_entry.clone();
         Callback::from(move |entry: RealBookEntry| {
@@ -105,102 +110,210 @@ fn App() -> Html {
         })
     };
 
+    // Callback: Handle arrow key navigation from input field
+    let on_navigate = {
+        let selected_index = selected_index.clone();
+        let search_results = search_results.clone();
+        Callback::from(move |direction: String| {
+            if let Some(response) = (*search_results).as_ref() {
+                let total = response.results.len();
+                if total > 0 {
+                    let new_index = if direction == "down" {
+                        utils::next_result_index(*selected_index, total)
+                    } else {
+                        utils::prev_result_index(*selected_index, total)
+                    };
+                    selected_index.set(Some(new_index));
+                }
+            }
+        })
+    };
+
+    // Callback: Handle Enter key from input field
+    let on_enter = {
+        let selected_entry = selected_entry.clone();
+        let selected_index = selected_index.clone();
+        let search_results = search_results.clone();
+        Callback::from(move |_: ()| {
+            if let Some(response) = (*search_results).as_ref() {
+                if let Some(idx) = *selected_index {
+                    if idx < response.results.len() {
+                        selected_entry.set(Some(response.results[idx].clone()));
+                    }
+                }
+            }
+        })
+    };
+
+    // Live search: trigger search whenever query or volume changes
+    {
+        let search_query = search_query.clone();
+        let selected_volume = selected_volume.clone();
+        let search_results = search_results.clone();
+        let search_loading = search_loading.clone();
+        let error = error.clone();
+        let selected_index = selected_index.clone();
+
+        use_effect_with(((*search_query).clone(), *selected_volume), move |(query, volume)| {
+            let query = query.clone();
+            let volume = *volume;
+            let results = search_results.clone();
+            let loading = search_loading.clone();
+            let error = error.clone();
+            let selected_index = selected_index.clone();
+
+            // Only search if query is not empty
+            if !query.is_empty() {
+                loading.set(true);
+                error.set(None);
+
+                spawn_local(async move {
+                    match api::search(Some(query), volume, None).await {
+                        Ok(response) => {
+                            results.set(Some(response.clone()));
+                            // Auto-highlight first result if results exist
+                            if !response.results.is_empty() {
+                                selected_index.set(Some(0));
+                            } else {
+                                selected_index.set(None);
+                            }
+                            error.set(None);
+                        }
+                        Err(e) => {
+                            error.set(Some(e.message));
+                            selected_index.set(None);
+                        }
+                    }
+                    loading.set(false);
+                });
+            } else {
+                // Clear results if query is empty
+                results.set(None);
+                selected_index.set(None);
+            }
+
+            || ()
+        });
+    }
+
+    // Set up global keyboard shortcuts for when input is not focused
+    // Arrow keys and Enter work both in the input field and globally
+    {
+        let selected_entry_clone = selected_entry.clone();
+        let selected_index_clone = selected_index.clone();
+
+        use_effect_with(
+            ((*search_results).clone(), *selected_index),
+            move |(results, sel_idx)| {
+            let window = web_sys::window().unwrap();
+            let document = window.document().unwrap();
+
+            let current_results = results.clone();
+            let current_index = *sel_idx;
+
+            let listener = EventListener::new(&document, "keydown", move |event| {
+                let keyboard_event = event.dyn_ref::<web_sys::KeyboardEvent>().unwrap();
+
+                // Skip if user is typing in input/textarea
+                // (these shortcuts are handled by the input's onkeydown)
+                if let Some(target) = keyboard_event.target() {
+                    if let Some(element) = target.dyn_ref::<web_sys::Element>() {
+                        let tag_name = element.tag_name().to_lowercase();
+                        if tag_name == "input" || tag_name == "textarea" {
+                            return;
+                        }
+                    }
+                }
+
+                // Arrow Down -> Navigate to next result
+                if keyboard_event.key() == "ArrowDown" {
+                    if let Some(response) = &current_results {
+                        let total = response.results.len();
+                        if total > 0 {
+                            keyboard_event.prevent_default();
+                            let next_index = utils::next_result_index(current_index, total);
+                            selected_index_clone.set(Some(next_index));
+                        }
+                    }
+                }
+                // Arrow Up -> Navigate to previous result
+                else if keyboard_event.key() == "ArrowUp" {
+                    if let Some(response) = &current_results {
+                        let total = response.results.len();
+                        if total > 0 {
+                            keyboard_event.prevent_default();
+                            let prev_index = utils::prev_result_index(current_index, total);
+                            selected_index_clone.set(Some(prev_index));
+                        }
+                    }
+                }
+                // Enter -> View the currently selected result
+                else if keyboard_event.key() == "Enter" {
+                    if let Some(response) = &current_results {
+                        if let Some(idx) = current_index {
+                            if idx < response.results.len() {
+                                keyboard_event.prevent_default();
+                                // Set the selected entry to view its sheet music
+                                selected_entry_clone.set(Some(response.results[idx].clone()));
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Return cleanup function - the listener is dropped when this runs
+            // This happens when the component unmounts
+            move || drop(listener)
+        });
+    }
+
+    // Render the UI
+    // The html! macro lets us write JSX-like syntax
     html! {
-        <div class="container">
-            <header>
-                <h1>{ "Real Book Search" }</h1>
-            </header>
+        // Pico CSS styles <main> as the main container
+        <main class="container">
+            // Header component (stateless, no props needed)
+            <Header />
 
-            <div class="search-section">
-                <div class="search-controls">
-                    <input
-                        type="text"
-                        placeholder="Search by title..."
-                        value={(*search_query).clone()}
-                        oninput={on_query_input}
-                    />
-                    <select onchange={on_volume_change}>
-                        <option value="">{ "All Volumes" }</option>
-                        <option value="1">{ "Volume 1" }</option>
-                        <option value="2">{ "Volume 2" }</option>
-                        <option value="3">{ "Volume 3" }</option>
-                    </select>
-                    <button onclick={on_search} disabled={*loading}>
-                        { if *loading { "Searching..." } else { "Search" } }
-                    </button>
-                    <button onclick={on_random} disabled={*loading}>
-                        { "🎲 Random" }
-                    </button>
-                </div>
+            // SearchInput component (controlled component with callbacks)
+            // Search happens automatically as user types
+            <SearchInput
+                query={(*search_query).clone()}
+                selected_volume={*selected_volume}
+                random_loading={*random_loading}
+                error={(*error).clone()}
+                on_query_change={on_query_change}
+                on_volume_change={on_volume_change}
+                on_random={on_random}
+                on_navigate={on_navigate}
+                on_enter={on_enter}
+            />
 
-                {if let Some(err) = (*error).as_ref() {
-                    html! { <div class="error">{ err }</div> }
-                } else {
-                    html! {}
-                }}
+            // Content grid: results on left, viewer on right (responsive)
+            <div class="content-grid">
+                // ResultsList component - shows loading spinner while searching
+                // selected_index tracks which result is highlighted via keyboard navigation
+                <ResultsList
+                    results={(*search_results).clone()}
+                    loading={*search_loading}
+                    selected_index={*selected_index}
+                    on_entry_click={on_entry_click}
+                />
+
+                // SheetViewer component - displays selected sheet music
+                <SheetViewer
+                    entry={(*selected_entry).clone()}
+                    loading={*random_loading}
+                />
             </div>
-
-            <div class="content">
-                <div class="results-section">
-                    {if let Some(response) = (*search_results).as_ref() {
-                        html! {
-                            <>
-                                <h2>{ format!("Results ({})", response.total) }</h2>
-                                <div class="results-list">
-                                    {for response.results.iter().map(|entry| {
-                                        let entry_clone = entry.clone();
-                                        let onclick = {
-                                            let callback = on_entry_click.clone();
-                                            move |_| callback.emit(entry_clone.clone())
-                                        };
-                                        html! {
-                                            <div class="result-item" {onclick}>
-                                                <div class="result-title">{ &entry.title }</div>
-                                                <div class="result-meta">
-                                                    { format!("Vol. {} | Pages {}", entry.volume, entry.page_range()) }
-                                                </div>
-                                            </div>
-                                        }
-                                    })}
-                                </div>
-                            </>
-                        }
-                    } else {
-                        html! {
-                            <div class="placeholder">
-                                { "Search for a song or click Random to get started" }
-                            </div>
-                        }
-                    }}
-                </div>
-
-                <div class="viewer-section">
-                    {if let Some(entry) = (*selected_entry).as_ref() {
-                        html! {
-                            <>
-                                <h2>{ &entry.title }</h2>
-                                <div class="sheet-images">
-                                    {for entry.all_image_urls().iter().map(|url| {
-                                        html! {
-                                            <img src={url.clone()} alt={format!("Sheet for {}", entry.title)} />
-                                        }
-                                    })}
-                                </div>
-                            </>
-                        }
-                    } else {
-                        html! {
-                            <div class="placeholder">
-                                { "Select a song to view the sheet music" }
-                            </div>
-                        }
-                    }}
-                </div>
-            </div>
-        </div>
+        </main>
     }
 }
 
+/// Entry point of the application
+///
+/// This function is called when the WASM module loads.
+/// It creates a Yew renderer for the App component and mounts it to the <body>.
 fn main() {
     yew::Renderer::<App>::new().render();
 }

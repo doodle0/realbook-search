@@ -5,172 +5,108 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Real Book Search</title>
+
+  <!-- Pico CSS - Classless version for semantic HTML styling -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #f5f5f5;
-      color: #333;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    header {
-      background: white;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    header h1 {
-      font-size: 28px;
-      color: #2c3e50;
-    }
-
-    .search-section {
-      background: white;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .search-controls {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      min-width: 200px;
-      padding: 10px 15px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    select {
-      padding: 10px 15px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-      background: white;
-      cursor: pointer;
-    }
-
-    button {
-      padding: 10px 20px;
-      background: #3498db;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    button:hover:not(:disabled) {
-      background: #2980b9;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .error {
-      margin-top: 15px;
-      padding: 10px;
-      background: #ffe6e6;
-      color: #d63031;
-      border-radius: 4px;
-      border-left: 4px solid #d63031;
-    }
-
-    .content {
+    /* Custom layout styles for responsive grid */
+    /* Mobile-first: stack vertically by default */
+    .content-grid {
       display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 20px;
+      grid-template-columns: 1fr;
+      gap: var(--pico-spacing);
     }
 
-    @media (max-width: 768px) {
-      .content {
-        grid-template-columns: 1fr;
+    /* Desktop: side-by-side layout (results 1/3, viewer 2/3) */
+    @media (min-width: 768px) {
+      .content-grid {
+        grid-template-columns: 1fr 2fr;
       }
     }
 
-    .results-section, .viewer-section {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    /* Search controls layout */
+    .search-controls {
+      display: flex;
+      gap: var(--pico-spacing);
+      flex-wrap: wrap;
     }
 
-    .results-section h2, .viewer-section h2 {
-      font-size: 20px;
-      margin-bottom: 15px;
-      color: #2c3e50;
+    .search-controls input[type="text"] {
+      flex: 1;
+      min-width: 200px;
     }
 
+    /* Results list scrolling */
     .results-list {
       max-height: 600px;
       overflow-y: auto;
     }
 
+    /* Result items - clickable appearance */
     .result-item {
-      padding: 12px;
-      border-bottom: 1px solid #eee;
+      padding: var(--pico-spacing);
+      margin-bottom: 0.5rem;
+      border: 1px solid var(--pico-muted-border-color);
+      border-radius: var(--pico-border-radius);
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background-color 0.2s, border-color 0.2s;
     }
 
     .result-item:hover {
-      background: #f8f9fa;
+      background-color: var(--pico-primary);
+      color: white;
     }
 
-    .result-item:last-child {
-      border-bottom: none;
+    .result-item:hover .result-meta {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Keyboard-selected result - subtle highlight */
+    .result-item.selected {
+      border-color: var(--pico-primary);
+      border-width: 2px;
     }
 
     .result-title {
       font-weight: 600;
-      margin-bottom: 4px;
-      color: #2c3e50;
+      margin-bottom: 0.25rem;
     }
 
     .result-meta {
-      font-size: 13px;
-      color: #7f8c8d;
+      font-size: 0.875rem;
+      color: var(--pico-muted-color);
     }
 
-    .placeholder {
-      text-align: center;
-      padding: 40px;
-      color: #95a5a6;
-    }
-
+    /* Sheet images display */
     .sheet-images {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: var(--pico-spacing);
+    }
+
+    .sheet-image-container {
+      position: relative;
+      min-height: 200px;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .sheet-images img {
       width: 100%;
       height: auto;
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 0;
+      border-radius: var(--pico-border-radius);
+    }
+
+    /* Placeholder text styling */
+    .placeholder {
+      text-align: center;
+      padding: calc(var(--pico-spacing) * 2);
+      color: var(--pico-muted-color);
     }
   </style>
 </head>
