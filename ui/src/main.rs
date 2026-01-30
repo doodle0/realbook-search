@@ -135,12 +135,10 @@ fn app() -> Html {
         let selected_index = selected_index.clone();
         let search_results = search_results.clone();
         Callback::from(move |_: ()| {
-            if let Some(response) = (*search_results).as_ref() {
-                if let Some(idx) = *selected_index {
-                    if idx < response.results.len() {
-                        selected_entry.set(Some(response.results[idx].clone()));
-                    }
-                }
+            if let Some(response) = (*search_results).as_ref()
+                && let Some(idx) = *selected_index
+                && idx < response.results.len() {
+                selected_entry.set(Some(response.results[idx].clone()));
             }
         })
     };
@@ -216,12 +214,11 @@ fn app() -> Html {
 
                 // Skip if user is typing in input/textarea
                 // (these shortcuts are handled by the input's onkeydown)
-                if let Some(target) = keyboard_event.target() {
-                    if let Some(element) = target.dyn_ref::<web_sys::Element>() {
-                        let tag_name = element.tag_name().to_lowercase();
-                        if tag_name == "input" || tag_name == "textarea" {
-                            return;
-                        }
+                if let Some(target) = keyboard_event.target()
+                    && let Some(element) = target.dyn_ref::<web_sys::Element>() {
+                    let tag_name = element.tag_name().to_lowercase();
+                    if tag_name == "input" || tag_name == "textarea" {
+                        return;
                     }
                 }
 
@@ -248,16 +245,13 @@ fn app() -> Html {
                     }
                 }
                 // Enter -> View the currently selected result
-                else if keyboard_event.key() == "Enter" {
-                    if let Some(response) = &current_results {
-                        if let Some(idx) = current_index {
-                            if idx < response.results.len() {
-                                keyboard_event.prevent_default();
-                                // Set the selected entry to view its sheet music
-                                selected_entry_clone.set(Some(response.results[idx].clone()));
-                            }
-                        }
-                    }
+                else if keyboard_event.key() == "Enter"
+                    && let Some(response) = &current_results
+                    && let Some(idx) = current_index
+                    && idx < response.results.len() {
+                    keyboard_event.prevent_default();
+                    // Set the selected entry to view its sheet music
+                    selected_entry_clone.set(Some(response.results[idx].clone()));
                 }
             });
 

@@ -31,18 +31,15 @@ pub fn results_list(props: &ResultsListProps) -> Html {
     {
         let selected_index = props.selected_index;
         use_effect_with(selected_index, move |sel_idx| {
-            if let Some(idx) = sel_idx {
-                // Find the selected element and scroll it into view
-                if let Some(document) = web_sys::window().and_then(|w| w.document()) {
-                    if let Some(element) = document.query_selector(&format!(".result-item[data-index='{}']", idx)).ok().flatten() {
-                        // Use "nearest" behavior - only scrolls if element is not visible
-                        // This works smoothly for both up and down navigation
-                        let options = web_sys::ScrollIntoViewOptions::new();
-                        options.set_block(web_sys::ScrollLogicalPosition::Nearest);
-                        options.set_behavior(web_sys::ScrollBehavior::Smooth);
-                        let _ = element.scroll_into_view_with_scroll_into_view_options(&options);
-                    }
-                }
+            if let Some(idx) = sel_idx
+                && let Some(document) = web_sys::window().and_then(|w| w.document())
+                && let Some(element) = document.query_selector(&format!(".result-item[data-index='{}']", idx)).ok().flatten() {
+                // Use "nearest" behavior - only scrolls if element is not visible
+                // This works smoothly for both up and down navigation
+                let options = web_sys::ScrollIntoViewOptions::new();
+                options.set_block(web_sys::ScrollLogicalPosition::Nearest);
+                options.set_behavior(web_sys::ScrollBehavior::Smooth);
+                let _ = element.scroll_into_view_with_scroll_into_view_options(&options);
             }
             || ()
         });

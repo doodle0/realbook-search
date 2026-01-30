@@ -30,10 +30,9 @@ pub fn search(
     let mut results: Vec<RealBookEntry> = data.iter().cloned().collect();
 
     // Filter by text query
-    if let Some(q) = query {
-        if !q.is_empty() {
-            results.retain(|entry| entry.matches(&q));
-        }
+    if let Some(q) = query
+        && !q.is_empty() {
+        results.retain(|entry| entry.matches(&q));
     }
 
     // Filter by volume

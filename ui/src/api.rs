@@ -33,10 +33,9 @@ pub async fn search(
     let mut url = format!("{}/search", API_BASE_URL);
     let mut params = vec![];
 
-    if let Some(q) = query {
-        if !q.is_empty() {
-            params.push(format!("query={}", urlencoding::encode(&q)));
-        }
+    if let Some(q) = query
+        && !q.is_empty() {
+        params.push(format!("query={}", urlencoding::encode(&q)));
     }
     if let Some(v) = volume {
         params.push(format!("volume={}", v));
