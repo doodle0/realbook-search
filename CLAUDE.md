@@ -147,9 +147,14 @@ curl http://localhost:8080/api/random
 2. ✅ **Refactor** - Apply refactoring criteria, fix important issues
 3. 📝 **Update docs** - Update CLAUDE.md, ARCHITECTURE.md, component docs
 4. 🔍 **Audit docs** - Run `./scripts/audit-docs.sh`
-5. 📊 **Create review** - Run `./scripts/milestone-review.sh "Phase N" reviews/phase-N.md`
-6. 💾 **Commit** - Use conventional commit style (verb-first, concise)
-7. 🏷️ **Tag** - Create version tag if releasing
+5. 📊 **Create review** - Write comprehensive review in `reviews/phase-N-completion.md`
+6. 🐙 **GitHub issue** - Create milestone issue with review content
+7. 💾 **Commit** - Use conventional commit style (verb-first, concise)
+8. 🏷️ **Tag** - Create version tag if releasing (optional)
+9. 🚀 **Push** - Push commits and tags to remote
+10. ✅ **Verify** - Check GitHub for commits and issue
+
+**See [WORKFLOWS.md - Phase Completion Process](docs/WORKFLOWS.md#phase-completion-process) for detailed steps and verification commands.**
 
 ## Current Phase
 
